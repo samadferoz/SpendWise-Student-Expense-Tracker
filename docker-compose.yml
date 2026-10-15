@@ -1,0 +1,49 @@
+services:
+  # ----------------------------------------------------
+  # Backend API Service (Node.js & Express)
+  # ----------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: spendwise-backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - NODE_ENV=production
+      - CLOUDANT_URL=${CLOUDANT_URL}
+      - CLOUDANT_APIKEY=${CLOUDANT_APIKEY}
+      - CLOUDANT_DB_NAME=${CLOUDANT_DB_NAME:-spendwise_db}
+      - CLOUDANT_USERNAME=${CLOUDANT_USERNAME:-}
+      - CLOUDANT_PASSWORD=${CLOUDANT_PASSWORD:-}
+    networks:
+      - spendwise-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5000/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  # ----------------------------------------------------
+  # Frontend UI Service (React + Vite served via Nginx)
+  # ----------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: spendwise-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - spendwise-net
+
+networks:
+  spendwise-net:
+    driver: bridge
